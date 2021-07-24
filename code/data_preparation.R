@@ -158,9 +158,11 @@ clinical_df[,adjuvant_management:=str_replace(adjuvant_management,'Declined.*','
 clinical_df[,adjuvant_management:=str_replace(adjuvant_management,'adj.*|Adj.*','adjuvant_chemo')]
 
 clinical_df[adjuvant_management!='adjuvant_chemo' &adjuvant_management!='surveillence', adjuvant_management:=NA]
+
 clinical_df[,table(adjuvant_management)]
 
 # format prognostic factors EMVI
+clinical_df[,table(EMVI)]
 
 clinical_df[str_detect(EMVI,'yes|Yes|positive'),EMVI:='pos']
 
@@ -168,17 +170,37 @@ clinical_df[str_detect(EMVI,'No\\b$|no\\b$|neg'),EMVI:='neg']
 
 clinical_df[EMVI!='pos' &EMVI!='neg', EMVI:=NA]
 
-# format prognostic factors CRM
+# format prognostic factors: CRM
 
 clinical_df[,table(CRM)]
 
+clinical_df[str_detect(CRM,regex('Involved.*|Positive|threaten.{1,2}$',ignore_case = T)),CRM:='pos']
 
-# format prognostic factors TRG
+clinical_df[str_detect(CRM,regex('clear.*|negative',ignore_case = T)),CRM:='neg']
+
+
+# format prognostic factors: TRG status
 
 clinical_df[,table(TRG_status)]
 
-clinical_df[str_detect(TRG_status,'TRG'),TRG_status]
+clinical_df[,TRG_status:=str_extract(TRG_status,regex('^TRG\\s?[0-9]$'))]
+clinical_df[,TRG_status:=str_replace(TRG_status,' ','')]
+
+# format prognostic factors: R status
+clinical_df[,table(R_status)]
+clinical_df[,R_status]
+clinical_df[,R_status:=str_extract(R_status,'^R[0-9]')]
+
+# format baseline histological grade
+
+clinical_df[,table(histological_grade_baseline)]
+clinical_df[,histological_grade_baseline:=str_extract(histological_grade_baseline,'G[0-9|x]')]
+
+# format baseline grade
+clinical_df[,table(ypT_stage)]
+clinical_df[,ypT_stage:=str_replace(ypT_stage,regex('ypt',ignore_case = T),'ypT')]
+
+clinical_df[,table(ypN_stage)]
 
 
-# format prognostic factors TRG
-
+clinical_df[,table(ypM_stage)]

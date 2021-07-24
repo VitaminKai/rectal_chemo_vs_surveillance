@@ -1,0 +1,48 @@
+---
+title: "Stage 3 rectal cancer adjuvant management: survival analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(survival)
+library(ggpubr)
+library(flextable)
+source(here::here('code','initiation.R'))
+source(here('code','data_preparation.R'))
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## KM Survival curve
+
+Plot KM curve with respect to adjuvant management option: adjuvant chemo vs surveillence
+```{r KM curve,echo=FALSE,warning=FALSE}
+
+survminer::ggsurvplot(
+  fit = survfit(Surv(time=os_time,event=os_status) ~ adjuvant_management, data = clinical_df), 
+  xlab = "Years", 
+  ylab = "Overall survival probability",
+  # risk.table = T,
+  pval=T,
+  pval.method=T,
+  # cumevents = T,
+  break.time.by = 1,
+  surv.median.line = "v",  # add the median survival pointer.
+  legend.labs = c("Adjuvant chemotherapy", "Surveillence"),
+  pval.coord=c(0,0.55),
+  pval.method.coord=c(0,0.6),
+  palette = 'Dark2',
+  ylim = c(0.5, 1)
+)
+
+```
+
+## Multivariate cox regression
+
+Adjusting for the following clinical parameters:
+
+```{r pressure, echo=FALSE}
+
+
+
+```
+
