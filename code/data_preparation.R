@@ -16,10 +16,12 @@ library(readxl)
 
 df <- data.table(read_excel(here('input','rectal_dataset_full.xlsx')))
 
-# Rename columns
+
+#===============================================================#
+# Rename columns ----
+#===============================================================#
 
 # Prognostic markers at baseline
-
 
 setnames(df,
          old="Age at diagnosis",
@@ -30,7 +32,7 @@ setnames(df,
          new='T_stage_baseline')
 
 setnames(df,
-         old="N stage baseline",
+         old="N stage at baseline",
          new='N_stage_baseline')
 
 
@@ -98,13 +100,85 @@ setnames(df,
          new='os_status')
 
 setnames(df,
-         old="Recurrence free survival (RFS)",
-         new='rfs')
+         old="EAS Diagnosis date",
+         new='date_of_diagnosis')
+
+setnames(df,
+         old="If deceased, date of death?",
+         new='date_of_death')
 
 
+setnames(df,
+         old="Date of Surgery",
+         new='date_of_surgery')
+
+setnames(df,
+         old="Recurrence Date",
+         new='date_of_recurrence')
                               
 
-col_to_include <- c('age_at_diagnosis','os','T_stage_baseline','N_stage_baseline'
-                    'histological_grade_baseline')
+col_to_include <- c('age_at_diagnosis','T_stage_baseline','N_stage_baseline',
+                    'ypT_stage','ypN_stage','ypM_stage','TRG_status','R_status',
+                    'EMVI','CRM','distance_anal_verge','adjuvant_management','adjuvant_chemo_regimen',
+                    'histological_grade_baseline','os_status','date_last_follow_up',
+                    'date_of_diagnosis','date_of_death','date_of_surgery','date_of_recurrence')
   
-df <- df
+clinical_df <- df[,..col_to_include]
+
+clinical_df[,`:=`(date_of_diagnosis=as.Date(date_of_diagnosis),
+                  date_last_follow_up=as.Date(date_last_follow_up),
+                  date_of_death=as.Date(as.numeric(date_of_death),origin="1900-01-01"),
+                  date_of_surgery=as.Date(as.numeric(date_of_surgery),origin="1900-01-01"),
+                  date_of_recurrence=as.Date(as.numeric(date_of_recurrence),origin="1900-01-01")
+                  )]
+
+clinical_df[is.na(date_last_follow_up),date_last_follow_up:=as.Date('2021-06-29')]
+
+
+clinical_df[,os_status:=ifelse(os_status=='Alive',0,
+                               ifelse(os_status=='Dead',1,NA))]
+
+# format rfs status
+clinical_df[,rfs_status := ifelse(is.na(date_of_recurrence)==TRUE, '0','1')]
+
+
+# format os time into years
+clinical_df[,os_time := ifelse(os_status=='0',(date_last_follow_up-date_of_diagnosis)/365,
+                               ifelse(os_status=='1',(date_of_death-date_of_diagnosis)/365,NA))]
+
+# format rfs time into years
+clinical_df[,rfs_time := ifelse(rfs_status=='0',(date_last_follow_up-date_of_diagnosis)/365,
+                               ifelse(rfs_status=='1',(date_of_recurrence-date_of_diagnosis)/365,NA))]
+
+# format adjuvant management column
+clinical_df[,adjuvant_management:=str_replace(adjuvant_management,'.*surv.*|.*Surv.*','surveillence')]
+
+clinical_df[,adjuvant_management:=str_replace(adjuvant_management,'Declined.*','surveillence')]
+
+clinical_df[,adjuvant_management:=str_replace(adjuvant_management,'adj.*|Adj.*','adjuvant_chemo')]
+
+clinical_df[adjuvant_management!='adjuvant_chemo' &adjuvant_management!='surveillence', adjuvant_management:=NA]
+clinical_df[,table(adjuvant_management)]
+
+# format prognostic factors EMVI
+
+clinical_df[str_detect(EMVI,'yes|Yes|positive'),EMVI:='pos']
+
+clinical_df[str_detect(EMVI,'No\\b$|no\\b$|neg'),EMVI:='neg']
+
+clinical_df[EMVI!='pos' &EMVI!='neg', EMVI:=NA]
+
+# format prognostic factors CRM
+
+clinical_df[,table(CRM)]
+
+
+# format prognostic factors TRG
+
+clinical_df[,table(TRG_status)]
+
+clinical_df[str_detect(TRG_status,'TRG'),TRG_status]
+
+
+# format prognostic factors TRG
+

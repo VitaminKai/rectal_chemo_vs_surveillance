@@ -6,4 +6,4 @@
 # Output: 
 # --------------
 
-sapply(c('data.table','here','ggplot2','glue','stringr'),function(x){library(x,quietly = T,character.only = TRUE)})
+sapply(c('data.table','here','ggplot2','RColorBrewer','glue','viridis','stringr'),function(x){library(x,quietly = T,character.only = TRUE)})
