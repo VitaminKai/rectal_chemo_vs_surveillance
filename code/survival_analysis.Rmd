@@ -42,7 +42,7 @@ Adjusting for the following clinical parameters:
 
 ```{r pressure, echo=FALSE}
 
-
+coxph(Surv(time=os_time,event=os_status) ~ adjuvant_management, data = clinical_df)
 
 ```
 
