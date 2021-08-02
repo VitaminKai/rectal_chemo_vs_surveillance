@@ -204,3 +204,30 @@ clinical_df[,table(ypN_stage)]
 
 
 clinical_df[,table(ypM_stage)]
+library(tidyverse)
+
+#### convert to stages #### 
+clinical_df %>% count(T_stage_baseline, N_stage_baseline)
+
+clinical_df %>% 
+  mutate(N_stage_baseline_new = 
+           str_extract(N_stage_baseline, "N\\d")
+           ) %>% 
+  count(T_stage_baseline, N_stage_baseline_new) %>% 
+  filter(N_stage_baseline_new == "N0") # all T stage baseline > T2
+
+
+clinical_df <- clinical_df %>% 
+  mutate(N_stage_baseline_new = 
+           str_extract(N_stage_baseline, "N\\d")
+  ) %>% 
+  mutate(
+    cancer_staging_tl = 
+      case_when(
+        N_stage_baseline_new %in% c("N2", "N1") ~ "stage_3",
+        N_stage_baseline_new == "N0" ~
+          "stage_2"
+      )
+  ) 
+
+clinical_df
