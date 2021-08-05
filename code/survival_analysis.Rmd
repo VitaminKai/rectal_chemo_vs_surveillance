@@ -5,7 +5,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 library(survival)
-library(ggpubr)
+# library(ggpubr)
 library(flextable)
 source(here::here('code','initiation.R'))
 source(here('code','data_preparation.R'))
@@ -42,7 +42,8 @@ Adjusting for the following clinical parameters:
 
 ```{r pressure, echo=FALSE}
 
-coxph(Surv(time=os_time,event=os_status) ~ adjuvant_management, data = clinical_df)
+coxph(Surv(time=os_time,event=os_status) ~ adjuvant_management:distance_anal_verge_final, data = clinical_df_multi)
+
 
 ```
 

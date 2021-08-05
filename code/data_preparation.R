@@ -222,7 +222,7 @@ clinical_df <- clinical_df %>%
            str_extract(N_stage_baseline, "N\\d")
   ) %>% 
   mutate(
-    cancer_staging_tl = 
+    cancer_staging_baseline = 
       case_when(
         N_stage_baseline_new %in% c("N2", "N1") ~ "stage_3",
         N_stage_baseline_new == "N0" ~
@@ -230,4 +230,39 @@ clinical_df <- clinical_df %>%
       )
   ) 
 
-clinical_df
+clinical_df <- clinical_df %>% 
+  mutate(ypM_stage = "M0") %>% 
+  mutate(
+    ypN_stage = str_extract(ypN_stage, "N\\d"),
+    ypT_stage = str_extract(ypT_stage, "T\\d")
+  ) %>%  
+  mutate(cancer_stage_yp = 
+           case_when(
+             ypN_stage %in% c("N2", "N1") ~ "stage_3",
+             ypT_stage %in% c("T3", "T4") ~ "stage_2",
+             ypT_stage %in% c("T1", "T2") ~ "stage_1",
+             ypT_stage %in% c("T0") ~ "stage_0"
+           )
+  )
+
+clinical_df <- clinical_df %>% 
+  mutate(distance_anal_verge_unit_tmp = 
+           str_extract(distance_anal_verge, "[a-z].*"),
+         distance_anal_verge_final =
+           case_when(
+             distance_anal_verge_unit_tmp == "cm" ~ as.numeric(str_extract(distance_anal_verge, "\\d")),
+             distance_anal_verge_unit_tmp == "mm" ~ as.numeric(str_extract(distance_anal_verge, "\\d"))/10
+           )
+         ) %>%
+  select(-c(distance_anal_verge_unit_tmp, distance_anal_verge))
+  
+clinical_df <- clinical_df %>% 
+  mutate(
+    CRM = if_else(
+      CRM %in% c("pos", "neg"), CRM, NA_character_
+    )
+  )
+
+clinical_df_multi <- clinical_df %>% 
+  select(-c(ends_with("stage_baseline"), ends_with("stage"), adjuvant_chemo_regimen)) %>% 
+  relocate(os_time, os_status, adjuvant_management, .before = everything())
