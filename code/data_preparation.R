@@ -139,8 +139,7 @@ clinical_df[,os_status:=ifelse(os_status=='Alive',0,
                                ifelse(os_status=='Dead',1,NA))]
 
 # format rfs status
-clinical_df[,rfs_status := ifelse(is.na(date_of_recurrence)==TRUE, '0','1')]
-
+clinical_df[,rfs_status := ifelse(is.na(date_of_recurrence)==TRUE, 0,1)]
 
 # format os time into years
 clinical_df[,os_time := ifelse(os_status=='0',(date_last_follow_up-date_of_diagnosis)/365,
@@ -195,15 +194,11 @@ clinical_df[,R_status:=str_extract(R_status,'^R[0-9]')]
 
 clinical_df[,table(histological_grade_baseline)]
 clinical_df[,histological_grade_baseline:=str_extract(histological_grade_baseline,'G[0-9|x]')]
-
+clinical_df[,histological_grade_baseline:=factor(histological_grade_baseline)]
 # format baseline grade
 clinical_df[,table(ypT_stage)]
 clinical_df[,ypT_stage:=str_replace(ypT_stage,regex('ypt',ignore_case = T),'ypT')]
 
-clinical_df[,table(ypN_stage)]
-
-
-clinical_df[,table(ypM_stage)]
 library(tidyverse)
 
 #### convert to stages #### 
@@ -222,7 +217,7 @@ clinical_df <- clinical_df %>%
            str_extract(N_stage_baseline, "N\\d")
   ) %>% 
   mutate(
-    cancer_staging_baseline = 
+    cancer_stage_baseline = 
       case_when(
         N_stage_baseline_new %in% c("N2", "N1") ~ "stage_3",
         N_stage_baseline_new == "N0" ~
@@ -262,7 +257,24 @@ clinical_df <- clinical_df %>%
       CRM %in% c("pos", "neg"), CRM, NA_character_
     )
   )
+# 
+# clinical_df_multi <- clinical_df %>% 
+#   select(-c(ends_with("stage_baseline"), ends_with("stage"), adjuvant_chemo_regimen)) %>% 
+#   relocate(os_time, os_status, adjuvant_management, .before = everything())
 
-clinical_df_multi <- clinical_df %>% 
-  select(-c(ends_with("stage_baseline"), ends_with("stage"), adjuvant_chemo_regimen)) %>% 
-  relocate(os_time, os_status, adjuvant_management, .before = everything())
+multi_var <- c('os_time','os_status','rfs_time','rfs_status',
+               'CRM',"R_status",'TRG_status','distance_anal_verge_final','EMVI',
+               'adjuvant_management',
+               'histological_grade_baseline','cancer_stage_yp')
+
+clinical_multi_df <- clinical_df[,..multi_var]
+# 
+# library(VIM)
+# library(mice)
+# mice_plot <- aggr(clinical_df_multi, col=c('navyblue','yellow'),
+#                     numbers=TRUE, sortVars=TRUE,
+#                     labels=names(clinical_df_multi), cex.axis=.7,
+#                     gap=3, ylab=c("Missing data","Pattern"))
+# 
+# 
+# clinical_multi_df[apply(.SD,2,function(x){return(is.na(x))})]

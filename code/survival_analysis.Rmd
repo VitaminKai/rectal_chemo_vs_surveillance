@@ -7,15 +7,16 @@ output: html_document
 library(survival)
 # library(ggpubr)
 library(flextable)
+library(gtsummary)
 source(here::here('code','initiation.R'))
 source(here('code','data_preparation.R'))
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## KM Survival curve
+## KM Survival curve w.r.t overall survival
 
 Plot KM curve with respect to adjuvant management option: adjuvant chemo vs surveillence
-```{r KM curve,echo=FALSE,warning=FALSE}
+```{r KM curve os,echo=FALSE,warning=FALSE}
 
 survminer::ggsurvplot(
   fit = survfit(Surv(time=os_time,event=os_status) ~ adjuvant_management, data = clinical_df), 
@@ -36,14 +37,79 @@ survminer::ggsurvplot(
 
 ```
 
+## KM Survival curve w.r.t recurrence free survival
+
+Plot KM curve with respect to adjuvant management option: adjuvant chemo vs surveillence
+```{r KM curve rfs,echo=FALSE,warning=FALSE}
+
+survminer::ggsurvplot(
+  fit = survfit(Surv(time=rfs_time,event=rfs_status) ~ adjuvant_management, data = clinical_df), 
+  xlab = "Years", 
+  ylab = "Recurrence free survival probability",
+  # risk.table = T,
+  pval=T,
+  pval.method=T,
+  # cumevents = T,
+  break.time.by = 1,
+  surv.median.line = "v",  # add the median survival pointer.
+  legend.labs = c("Adjuvant chemotherapy", "Surveillence"),
+  pval.coord=c(0,0.55),
+  pval.method.coord=c(0,0.6),
+  palette = 'Dark2',
+  ylim = c(0.5, 1)
+)
+
+```
+
 ## Multivariate cox regression
 
-Adjusting for the following clinical parameters:
+Cox analysis for overall survival adjusting for the following clinical parameters:
 
-```{r pressure, echo=FALSE}
+```{r multi-cox os, echo=FALSE}
 
-coxph(Surv(time=os_time,event=os_status) ~ adjuvant_management:distance_anal_verge_final, data = clinical_df_multi)
+coxph(Surv(time=os_time,event=os_status) ~ adjuvant_management+R_status+EMVI+CRM+distance_anal_verge_final+
+        histological_grade_baseline+
+        cancer_stage_yp, data = clinical_multi_df)
 
 
+```
+
+
+## Multivariate cox regression with rfs
+
+Cox analysis for recurrence free survival adjusting for the following clinical parameters:
+
+```{r multi-cox rfs, echo=FALSE}
+
+coxph(Surv(time=rfs_time,event=rfs_status) ~ adjuvant_management+R_status+EMVI+CRM+distance_anal_verge_final+
+        histological_grade_baseline+
+        cancer_stage_yp, data = clinical_multi_df)
+
+```
+
+## Multi cox analysis table
+```{r cox table,echo=FALSE}
+
+os_surv_table <-coxph(Surv(time=os_time,event=os_status) ~
+                      adjuvant_management+R_status+EMVI+CRM+distance_anal_verge_final+
+                        histological_grade_baseline+
+                        cancer_stage_yp, data = clinical_multi_df) %>%
+  tbl_regression(exponentiate = TRUE) %>%
+  add_n()
+
+rfs_surv_table <-coxph(Surv(time=rfs_time,event=rfs_status) ~
+                      adjuvant_management+R_status+EMVI+CRM+distance_anal_verge_final+
+                        histological_grade_baseline+
+                        cancer_stage_yp, data = clinical_multi_df) %>%
+  tbl_regression(exponentiate = TRUE) %>%
+  add_n()
+
+combined_survival_table <-
+  tbl_merge(
+    tbls = list(os_surv_table, rfs_surv_table),
+    tab_spanner = c("**Overall survival**", "**Recurrence free survival**")
+  )
+
+combined_survival_table
 ```
 
