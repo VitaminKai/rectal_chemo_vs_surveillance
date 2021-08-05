@@ -24,6 +24,10 @@ df <- data.table(read_excel(here('input','rectal_dataset_full.xlsx')))
 # Prognostic markers at baseline
 
 setnames(df,
+         old="R number",
+         new='patient_id')
+
+setnames(df,
          old="Age at diagnosis",
          new='age_at_diagnosis')
 
@@ -117,13 +121,13 @@ setnames(df,
          new='date_of_recurrence')
                               
 
-col_to_include <- c('age_at_diagnosis','T_stage_baseline','N_stage_baseline',
+col_to_include <- c('patient_id','age_at_diagnosis','T_stage_baseline','N_stage_baseline',
                     'ypT_stage','ypN_stage','ypM_stage','TRG_status','R_status',
                     'EMVI','CRM','distance_anal_verge','adjuvant_management','adjuvant_chemo_regimen',
                     'histological_grade_baseline','os_status','date_last_follow_up',
                     'date_of_diagnosis','date_of_death','date_of_surgery','date_of_recurrence')
   
-clinical_df <- df[,..col_to_include]
+clinical_df <- df[!is.na(patient_id),..col_to_include]
 
 clinical_df[,`:=`(date_of_diagnosis=as.Date(date_of_diagnosis),
                   date_last_follow_up=as.Date(date_last_follow_up),
@@ -262,19 +266,20 @@ clinical_df <- clinical_df %>%
 #   select(-c(ends_with("stage_baseline"), ends_with("stage"), adjuvant_chemo_regimen)) %>% 
 #   relocate(os_time, os_status, adjuvant_management, .before = everything())
 
-multi_var <- c('os_time','os_status','rfs_time','rfs_status',
+multi_var <- c('patient_id','os_time','os_status','rfs_time','rfs_status',
                'CRM',"R_status",'TRG_status','distance_anal_verge_final','EMVI',
                'adjuvant_management',
                'histological_grade_baseline','cancer_stage_yp')
 
 clinical_multi_df <- clinical_df[,..multi_var]
-# 
+# # 
 # library(VIM)
 # library(mice)
 # mice_plot <- aggr(clinical_df_multi, col=c('navyblue','yellow'),
 #                     numbers=TRUE, sortVars=TRUE,
 #                     labels=names(clinical_df_multi), cex.axis=.7,
 #                     gap=3, ylab=c("Missing data","Pattern"))
-# 
-# 
-# clinical_multi_df[apply(.SD,2,function(x){return(is.na(x))})]
+# # 
+# # 
+
+

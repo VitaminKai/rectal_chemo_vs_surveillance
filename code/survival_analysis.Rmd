@@ -61,6 +61,25 @@ survminer::ggsurvplot(
 
 ```
 
+## Missing data pattern
+```{r missing data plot,echo=F}
+
+na_pattern_df <- as.data.table(clinical_multi_df[,apply(.SD,2,function(x){return(is.na(x))}),.SDcols=!c('patient_id')])
+na_pattern_df[,patient_id:=clinical_multi_df[,patient_id]]
+
+na_pattern_plot_df <- melt(na_pattern_df,id.vars='patient_id')
+
+ggplot(data=na_pattern_plot_df)+
+  geom_tile(aes(x=patient_id,y=variable,fill=value),colour='black')+
+  labs(fill='Missing status',x='patient id')+
+  scale_y_discrete(labels=rid_of_underscore)+
+  scale_fill_brewer(palette = 'RdYlGn',labels=c('FALSE'='present','TRUE'='missing'))+
+  theme(axis.ticks.x = element_blank(),
+        axis.text.x = element_blank())
+
+```
+
+
 ## Multivariate cox regression
 
 Cox analysis for overall survival adjusting for the following clinical parameters:
