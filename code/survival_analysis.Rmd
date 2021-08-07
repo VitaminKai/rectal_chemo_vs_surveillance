@@ -1,6 +1,7 @@
 ---
 title: "Stage 3 rectal cancer adjuvant management: survival analysis"
-output: html_document
+output: html_document:
+  toc: true
 ---
 
 ```{r setup, include=FALSE}
@@ -12,6 +13,40 @@ source(here::here('code','initiation.R'))
 source(here('code','data_preparation.R'))
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+
+## Clinical summary table
+
+Compared to the adjuvant chemotherapy group, patients in the surveillence group tends to be older and present with better prognostic profile. 
+
+```{r,echo=FALSE,warning=FALSE}
+tbl_summary(data=clinical_multi_df[,!c('patient_id')],
+            by='adjuvant_management',
+            label = list(age_at_diagnosis ~ 'Age at diagnosis',
+                         os_time ~ 'Follow up time',
+                         os_status ~ 'Number of overall death',
+                         rfs_time ~ 'Recurrence free survival time',
+                         rfs_status ~ 'Number of disease recurrence',
+                         R_status ~ 'R status',
+                         TRG_status ~ 'TRG status',
+                         distance_anal_verge_final ~ 'Distance from anal verge',
+                         histological_grade_baseline ~ 'Baseline histological grade',
+                         cancer_stage_yp~ 'Cancer staging post surgery',
+                         time_interval_RT_surgery ~ 'Time between radiotherapy and surgery',
+                         cancer_stage_yp_RT~'Cancer staging post radiotherapy'),
+            missing='no',
+            theme_gtsummary_journal(journal='jama')) %>%
+  add_n() %>% # add column with total number of non-missing observations
+  add_p() %>% # test for a difference between groups
+  modify_header(label = "**Variable**",
+                stat_1 = '**Adjuvant chemotherapy**',
+                stat_2 = '**Surveillence**') %>% # update the column header
+  bold_labels()
+
+
+
+```
+
 
 ## KM Survival curve w.r.t overall survival
 
@@ -82,13 +117,13 @@ ggplot(data=na_pattern_plot_df)+
 
 ## Multivariate cox regression
 
-Cox analysis for overall survival adjusting for the following clinical parameters:
+Cox analysis for overall survival adjusting for the following clinical parameters: age at diagnosis,R status, EMVI, CRM, distance anal verge, baseline histological grade, cancer staging after surgery
 
 ```{r multi-cox os, echo=FALSE}
 
-coxph(Surv(time=os_time,event=os_status) ~ adjuvant_management+R_status+EMVI+CRM+distance_anal_verge_final+
-        histological_grade_baseline+
-        cancer_stage_yp, data = clinical_multi_df)
+coxph(Surv(time=os_time,event=os_status) ~ adjuvant_management+age_at_diagnosis+R_status+EMVI+CRM+distance_anal_verge_final+
+        histological_grade_baseline+time_interval_RT_surgery+
+        cancer_stage_yp_RT+cancer_stage_yp, data = clinical_multi_df)
 
 
 ```
@@ -96,31 +131,51 @@ coxph(Surv(time=os_time,event=os_status) ~ adjuvant_management+R_status+EMVI+CRM
 
 ## Multivariate cox regression with rfs
 
-Cox analysis for recurrence free survival adjusting for the following clinical parameters:
+Cox analysis for recurrence free survival adjusting for the following: age at diagnosis,R status, EMVI, CRM, distance anal verge, baseline histological grade, cancer staging after surgery
 
 ```{r multi-cox rfs, echo=FALSE}
 
-coxph(Surv(time=rfs_time,event=rfs_status) ~ adjuvant_management+R_status+EMVI+CRM+distance_anal_verge_final+
-        histological_grade_baseline+
-        cancer_stage_yp, data = clinical_multi_df)
+coxph(Surv(time=rfs_time,event=rfs_status) ~ adjuvant_management+age_at_diagnosis+R_status+EMVI+CRM+distance_anal_verge_final+
+        histological_grade_baseline+time_interval_RT_surgery+
+        cancer_stage_yp_RT+cancer_stage_yp, data = clinical_multi_df)
 
 ```
 
 ## Multi cox analysis table
+
 ```{r cox table,echo=FALSE}
 
 os_surv_table <-coxph(Surv(time=os_time,event=os_status) ~
-                      adjuvant_management+R_status+EMVI+CRM+distance_anal_verge_final+
-                        histological_grade_baseline+
-                        cancer_stage_yp, data = clinical_multi_df) %>%
-  tbl_regression(exponentiate = TRUE) %>%
+                        adjuvant_management+age_at_diagnosis+R_status+TRG_status+
+                        EMVI+CRM+distance_anal_verge_final+
+                        histological_grade_baseline+time_interval_RT_surgery+
+                        cancer_stage_yp_RT+cancer_stage_yp, 
+                      data = clinical_multi_df) %>%
+  tbl_regression(exponentiate = TRUE,
+                 label = list(age_at_diagnosis ~ 'Age at diagnosis',
+                              R_status ~ 'R status',
+                              TRG_status ~ 'TRG status',
+                              distance_anal_verge_final ~ 'Distance from anal verge',
+                              histological_grade_baseline ~ 'Baseline histological grade',
+                              cancer_stage_yp ~ 'Cancer staging post surgery',
+                              time_interval_RT_surgery ~ 'Time between radiotherapy and surgery',
+                              cancer_stage_yp_RT~'Cancer staging post radiotherapy')) %>%
   add_n()
 
 rfs_surv_table <-coxph(Surv(time=rfs_time,event=rfs_status) ~
-                      adjuvant_management+R_status+EMVI+CRM+distance_anal_verge_final+
-                        histological_grade_baseline+
-                        cancer_stage_yp, data = clinical_multi_df) %>%
-  tbl_regression(exponentiate = TRUE) %>%
+                         adjuvant_management+age_at_diagnosis+R_status+TRG_status+
+                         +EMVI+CRM+distance_anal_verge_final+
+                         histological_grade_baseline+time_interval_RT_surgery+
+                         cancer_stage_yp+cancer_stage_yp_RT, data = clinical_multi_df) %>%
+  tbl_regression(exponentiate = TRUE,
+                 label = list(age_at_diagnosis ~ 'Age at diagnosis',
+                              R_status ~ 'R status',
+                              TRG_status ~ 'TRG status',
+                              distance_anal_verge_final ~ 'Distance from anal verge',
+                              histological_grade_baseline ~ 'Baseline histological grade',
+                              cancer_stage_yp~ 'Cancer staging post surgery',
+                              time_interval_RT_surgery ~ 'Time between radiotherapy and surgery',
+                              cancer_stage_yp_RT~'Cancer staging post radiotherapy')) %>%
   add_n()
 
 combined_survival_table <-

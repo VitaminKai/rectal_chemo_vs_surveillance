@@ -47,8 +47,6 @@ multi_cox <- coxph(formula= Surv(os_time,os_status)~adjuvant_management+,data=cl
 
 
 
-
-
 # convert to flextable
 
 multi_cox_results_summary_tbl <- flextable(multi_cox_results_summary_tbl)

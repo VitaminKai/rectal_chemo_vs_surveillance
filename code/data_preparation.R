@@ -66,6 +66,12 @@ setnames(df,
          old="What neodjuvant chemo regimen?",
          new='neoadjuvant_chemo_regimen')
 
+
+setnames(df,
+         old="Time Delay between RT and surgery (days)",
+         new='time_interval_RT_surgery')
+
+
 # prognosis markers post RT/surgery
 setnames(df,
          old="ypT staging at Surgery(post-op)",
@@ -80,6 +86,20 @@ setnames(df,
          old="ypM staging",
          new='ypM_stage')
 
+
+setnames(df,
+         old="yT staging post RT",
+         new='ypT_RT')
+
+
+setnames(df,
+         old="yN stage post RT",
+         new='ypN_RT')
+
+
+setnames(df,
+         old="yM stage post RT",
+         new='ypM_RT')
 
 setnames(df,
          old="TRG status on MRI , post-RT E.g. TRG2, TRG3",
@@ -119,14 +139,16 @@ setnames(df,
 setnames(df,
          old="Recurrence Date",
          new='date_of_recurrence')
-                              
+
 
 col_to_include <- c('patient_id','age_at_diagnosis','T_stage_baseline','N_stage_baseline',
-                    'ypT_stage','ypN_stage','ypM_stage','TRG_status','R_status',
-                    'EMVI','CRM','distance_anal_verge','adjuvant_management','adjuvant_chemo_regimen',
-                    'histological_grade_baseline','os_status','date_last_follow_up',
+                    'ypT_stage','ypN_stage','ypM_stage','ypT_RT','ypN_RT','ypM_RT',
+                    'TRG_status','R_status','EMVI','CRM','distance_anal_verge',
+                    'adjuvant_management','adjuvant_chemo_regimen',
+                    'histological_grade_baseline','time_interval_RT_surgery',
+                    'os_status','date_last_follow_up',
                     'date_of_diagnosis','date_of_death','date_of_surgery','date_of_recurrence')
-  
+
 clinical_df <- df[!is.na(patient_id),..col_to_include]
 
 clinical_df[,`:=`(date_of_diagnosis=as.Date(date_of_diagnosis),
@@ -134,7 +156,7 @@ clinical_df[,`:=`(date_of_diagnosis=as.Date(date_of_diagnosis),
                   date_of_death=as.Date(as.numeric(date_of_death),origin="1900-01-01"),
                   date_of_surgery=as.Date(as.numeric(date_of_surgery),origin="1900-01-01"),
                   date_of_recurrence=as.Date(as.numeric(date_of_recurrence),origin="1900-01-01")
-                  )]
+)]
 
 clinical_df[is.na(date_last_follow_up),date_last_follow_up:=as.Date('2021-06-29')]
 
@@ -151,7 +173,7 @@ clinical_df[,os_time := ifelse(os_status=='0',(date_last_follow_up-date_of_diagn
 
 # format rfs time into years
 clinical_df[,rfs_time := ifelse(rfs_status=='0',(date_last_follow_up-date_of_diagnosis)/365,
-                               ifelse(rfs_status=='1',(date_of_recurrence-date_of_diagnosis)/365,NA))]
+                                ifelse(rfs_status=='1',(date_of_recurrence-date_of_diagnosis)/365,NA))]
 
 # format adjuvant management column
 clinical_df[,adjuvant_management:=str_replace(adjuvant_management,'.*surv.*|.*Surv.*','surveillence')]
@@ -163,6 +185,9 @@ clinical_df[,adjuvant_management:=str_replace(adjuvant_management,'adj.*|Adj.*',
 clinical_df[adjuvant_management!='adjuvant_chemo' &adjuvant_management!='surveillence', adjuvant_management:=NA]
 
 clinical_df[,table(adjuvant_management)]
+
+# Format time interval between RT and surgery
+clinical_df[,time_interval_RT_surgery:= as.numeric(time_interval_RT_surgery)]
 
 # format prognostic factors EMVI
 clinical_df[,table(EMVI)]
@@ -197,8 +222,10 @@ clinical_df[,R_status:=str_extract(R_status,'^R[0-9]')]
 # format baseline histological grade
 
 clinical_df[,table(histological_grade_baseline)]
-clinical_df[,histological_grade_baseline:=str_extract(histological_grade_baseline,'G[0-9|x]')]
+clinical_df[,histological_grade_baseline:=str_extract(histological_grade_baseline,'G[0-9]')]
+
 clinical_df[,histological_grade_baseline:=factor(histological_grade_baseline)]
+
 # format baseline grade
 clinical_df[,table(ypT_stage)]
 clinical_df[,ypT_stage:=str_replace(ypT_stage,regex('ypt',ignore_case = T),'ypT')]
@@ -211,7 +238,7 @@ clinical_df %>% count(T_stage_baseline, N_stage_baseline)
 clinical_df %>% 
   mutate(N_stage_baseline_new = 
            str_extract(N_stage_baseline, "N\\d")
-           ) %>% 
+  ) %>% 
   count(T_stage_baseline, N_stage_baseline_new) %>% 
   filter(N_stage_baseline_new == "N0") # all T stage baseline > T2
 
@@ -229,6 +256,20 @@ clinical_df <- clinical_df %>%
       )
   ) 
 
+# Format post RT staging
+clinical_df[,ypT_RT:=str_extract(ypT_RT,'T\\d')]
+clinical_df[,ypN_RT:=str_extract(ypN_RT,'N\\d')]
+clinical_df[,ypM_RT:=str_extract(ypM_RT,'M\\d')]
+
+clinical_df[,cancer_stage_yp_RT := case_when(ypM_RT == 'M1' ~ 'stage_4',
+                                             ypN_RT %in% c("N2", "N1") ~ "stage_3",
+                                             ypT_RT %in% c("T3", "T4") ~ "stage_2",
+                                             ypT_RT %in% c("T1", "T2") ~ "stage_1",
+                                             ypT_RT %in% c("T0") ~ "stage_0")]
+
+clinical_df[,cancer_stage_yp_RT:= fct_relevel(cancer_stage_yp_RT,'stage_3')] 
+
+# Format post surgery staging
 clinical_df <- clinical_df %>% 
   mutate(ypM_stage = "M0") %>% 
   mutate(
@@ -244,6 +285,10 @@ clinical_df <- clinical_df %>%
            )
   )
 
+clinical_df[,cancer_stage_yp:= fct_relevel(cancer_stage_yp,'stage_3')] 
+
+
+# format CRM
 clinical_df <- clinical_df %>% 
   mutate(distance_anal_verge_unit_tmp = 
            str_extract(distance_anal_verge, "[a-z].*"),
@@ -252,9 +297,9 @@ clinical_df <- clinical_df %>%
              distance_anal_verge_unit_tmp == "cm" ~ as.numeric(str_extract(distance_anal_verge, "\\d")),
              distance_anal_verge_unit_tmp == "mm" ~ as.numeric(str_extract(distance_anal_verge, "\\d"))/10
            )
-         ) %>%
+  ) %>%
   select(-c(distance_anal_verge_unit_tmp, distance_anal_verge))
-  
+
 clinical_df <- clinical_df %>% 
   mutate(
     CRM = if_else(
@@ -266,10 +311,10 @@ clinical_df <- clinical_df %>%
 #   select(-c(ends_with("stage_baseline"), ends_with("stage"), adjuvant_chemo_regimen)) %>% 
 #   relocate(os_time, os_status, adjuvant_management, .before = everything())
 
-multi_var <- c('patient_id','os_time','os_status','rfs_time','rfs_status',
+multi_var <- c('patient_id','os_time','os_status','rfs_time','rfs_status','age_at_diagnosis',
                'CRM',"R_status",'TRG_status','distance_anal_verge_final','EMVI',
-               'adjuvant_management',
-               'histological_grade_baseline','cancer_stage_yp')
+               'adjuvant_management','time_interval_RT_surgery',
+               'histological_grade_baseline','cancer_stage_yp','cancer_stage_yp_RT')
 
 clinical_multi_df <- clinical_df[,..multi_var]
 # # 
