@@ -66,3 +66,20 @@ multi_cox_results_summary_tbl %<>%
 save_as_docx(multi_cox_results_summary_tbl, path = here('output',"uni_cox summary.docx"))
 
 
+
+survminer::ggsurvplot(
+  fit = survfit(Surv(time=os_time,event=os_status) ~ adjuvant_management, data = clinical_df), 
+  xlab = "Years", 
+  ylab = "Overall survival probability",
+  # risk.table = T,
+  pval=T,
+  pval.method=T,
+  # cumevents = T,
+  break.time.by = 1,
+  surv.median.line = "v",  # add the median survival pointer.
+  legend.labs = c("Adjuvant chemotherapy", "Surveillence"),
+  pval.coord=c(0,0.55),
+  pval.method.coord=c(0,0.6),
+  palette = 'Dark2',
+  ylim = c(0.5, 1)
+)

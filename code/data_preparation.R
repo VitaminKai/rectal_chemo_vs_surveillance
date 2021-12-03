@@ -151,6 +151,10 @@ col_to_include <- c('patient_id','age_at_diagnosis','T_stage_baseline','N_stage_
 
 clinical_df <- df[!is.na(patient_id),..col_to_include]
 
+# Remove this patient R684833 because its rfs time is negative
+clinical_df <- clinical_df[patient_id != 'R684833']
+
+
 clinical_df[,`:=`(date_of_diagnosis=as.Date(date_of_diagnosis),
                   date_last_follow_up=as.Date(date_last_follow_up),
                   date_of_death=as.Date(as.numeric(date_of_death),origin="1900-01-01"),
@@ -158,22 +162,59 @@ clinical_df[,`:=`(date_of_diagnosis=as.Date(date_of_diagnosis),
                   date_of_recurrence=as.Date(as.numeric(date_of_recurrence),origin="1900-01-01")
 )]
 
+
+
+
+###=============================================###
+# Add date of last follow up
+###=============================================###
+
+# Add default date of last follow up for all patients
 clinical_df[is.na(date_last_follow_up),date_last_follow_up:=as.Date('2021-06-29')]
 
+# For patients with unknown dead/alive status on the excel sheet, search through 
+# record and put last follow up date as the last date where their record was updated
+clinical_df[patient_id=='R654092',date_last_follow_up:=as.Date('2021-03-01')]
+clinical_df[patient_id=='R654144',date_last_follow_up:=as.Date('2020-07-12')]
+clinical_df[patient_id=='R655268',date_last_follow_up:=as.Date('2019-03-25')]
+clinical_df[patient_id=='R656852',date_last_follow_up:=as.Date('2020-11-18')]
+clinical_df[patient_id=='R649248',date_last_follow_up:=as.Date('2016-01-19')]
+clinical_df[patient_id=='R648961',date_last_follow_up:=as.Date('2016-12-03')]
+clinical_df[patient_id=='R644471',date_last_follow_up:=as.Date('2017-01-07')]
+clinical_df[patient_id=='R661768',date_last_follow_up:=as.Date('2016-09-29')]
+clinical_df[patient_id=='R675352',date_last_follow_up:=as.Date('2018-01-31')]
 
-clinical_df[,os_status:=ifelse(os_status=='Alive',0,
-                               ifelse(os_status=='Dead',1,NA))]
 
-# format rfs status
+###=============================================###
+# Extract survival status
+###=============================================###
+
+clinical_df[,table(date_of_surgery)]
+clinical_df[patient_id=='R654092',os_status]
+
+# Classify os_status as 1 if dead and 0 if otherwise including both alive and NA (i.e. lost to follow-up)
+clinical_df[,os_status:=ifelse(os_status=='Dead',1,0)]
+clinical_df[is.na(os_status),os_status:=0]
+
+
+# format rfs status, there is only date info in this column, therefore, recurred if column is not empty
 clinical_df[,rfs_status := ifelse(is.na(date_of_recurrence)==TRUE, 0,1)]
 
-# format os time into years
-clinical_df[,os_time := ifelse(os_status=='0',(date_last_follow_up-date_of_diagnosis)/365,
-                               ifelse(os_status=='1',(date_of_death-date_of_diagnosis)/365,NA))]
 
-# format rfs time into years
-clinical_df[,rfs_time := ifelse(rfs_status=='0',(date_last_follow_up-date_of_diagnosis)/365,
-                                ifelse(rfs_status=='1',(date_of_recurrence-date_of_diagnosis)/365,NA))]
+###=============================================###
+# Calculate survival time
+###=============================================###
+
+# Choose the start date of survival
+survival_start_date = 'date_of_surgery'
+
+# calculate os time and format os time into years
+clinical_df[,os_time := ifelse(os_status=='0',(date_last_follow_up-get(survival_start_date))/365,
+                               ifelse(os_status=='1',(date_of_death-get(survival_start_date))/365,NA))]
+
+# calculate rfs time and format rfs time into years
+clinical_df[,rfs_time := ifelse(rfs_status=='0',os_time,
+                                ifelse(rfs_status=='1',(date_of_recurrence-get(survival_start_date))/365,NA))]
 
 # format adjuvant management column
 clinical_df[,adjuvant_management:=str_replace(adjuvant_management,'.*surv.*|.*Surv.*','surveillence')]
@@ -214,6 +255,9 @@ clinical_df[,table(TRG_status)]
 clinical_df[,TRG_status:=str_extract(TRG_status,regex('^TRG\\s?[0-9]$'))]
 clinical_df[,TRG_status:=str_replace(TRG_status,' ','')]
 
+clinical_df[,TRG_status:= fct_relevel(TRG_status,'TRG3')] 
+
+
 # format prognostic factors: R status
 clinical_df[,table(R_status)]
 clinical_df[,R_status]
@@ -225,6 +269,8 @@ clinical_df[,table(histological_grade_baseline)]
 clinical_df[,histological_grade_baseline:=str_extract(histological_grade_baseline,'G[0-9]')]
 
 clinical_df[,histological_grade_baseline:=factor(histological_grade_baseline)]
+
+clinical_df[,histological_grade_baseline:= fct_relevel(histological_grade_baseline,'G3')]
 
 # format baseline grade
 clinical_df[,table(ypT_stage)]
@@ -306,6 +352,10 @@ clinical_df <- clinical_df %>%
       CRM %in% c("pos", "neg"), CRM, NA_character_
     )
   )
+
+clinical_df[,CRM:= fct_relevel(CRM,'pos')] 
+
+
 # 
 # clinical_df_multi <- clinical_df %>% 
 #   select(-c(ends_with("stage_baseline"), ends_with("stage"), adjuvant_chemo_regimen)) %>% 
