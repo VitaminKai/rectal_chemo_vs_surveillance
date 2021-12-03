@@ -8,6 +8,7 @@ library(survival)
 # library(ggpubr)
 library(flextable)
 library(gtsummary)
+library(MatchIt)
 source(here::here('code','initiation.R'))
 source(here('code','data_preparation.R'))
 
@@ -286,7 +287,7 @@ os_multi_surv_table <-coxphf::coxphf(as.formula(paste('Surv(time=os_time,event=o
 
 
 rfs_multi_surv_table <- coxphf::coxphf(as.formula(paste('Surv(time=rfs_time,event=rfs_status)~',paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+'))),
-                             data = clinical_multi_complete_df,maxit=500)
+                                       data = clinical_multi_complete_df,maxit=500)
 
 
 
@@ -315,5 +316,90 @@ multi_combined_table <-
   modify_caption("**Multi-variate**")
 
 multi_combined_table
+```
+
+# Propensity score matching
+
+```{r propensity score matching}
+
+# 
+
+propensity_df <- copy(clinical_multi_complete_df)
+propensity_df <- propensity_df[,adjuvant_management:=ifelse(adjuvant_management=='surveillence',0,1)]
+# propensity_df <- na.omit(clinical_multi_df[,adjuvant_management:=ifelse(adjuvant_management=='surveillence',0,1)])
+
+propensity_matched_df <- matchit(formula = adjuvant_management ~ age_at_diagnosis+CRM+R_status+distance_anal_verge_final+time_interval_RT_surgery+histological_grade_baseline+cancer_stage_yp,
+                                 data=propensity_df,
+                                 method ='optimal',distance='glm',link='logit')
+
+summary(propensity_matched_df)
+plot(summary(propensity_matched_df))
+
+
+
+tbl_summary(data=match.data(propensity_matched_df)[,!c('patient_id')],
+            by='adjuvant_management',
+            label = list(age_at_diagnosis ~ 'Age at diagnosis',
+                         os_time ~ 'Follow up time',
+                         os_status ~ 'Number of overall death',
+                         rfs_time ~ 'Recurrence free survival time',
+                         rfs_status ~ 'Number of disease recurrence',
+                         R_status ~ 'R status',
+                         # TRG_status ~ 'TRG status',
+                         distance_anal_verge_final ~ 'Distance from anal verge',
+                         histological_grade_baseline ~ 'Baseline histological grade',
+                         cancer_stage_yp~ 'Cancer staging post surgery',
+                         # cancer_stage_yp_RT~'Cancer staging post radiotherapy',
+                         time_interval_RT_surgery ~ 'Time between radiotherapy and surgery'),
+            missing='no',
+            theme_gtsummary_journal(journal='jama')) %>%
+  add_n() %>% # add column with total number of non-missing observations
+  add_p() %>% # test for a difference between groups
+  # modify_header(label = "**Variable**",
+  #               stat_1 = '**Adjuvant chemotherapy**',
+  #               stat_2 = '**Surveillence**') %>% # update the column header
+  bold_labels() %>%
+  bold_p()
+
+
+coxph(as.formula(paste('Surv(time=os_time,event=os_status)~',paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+'))), 
+      data = match.data(propensity_matched_df)) %>%
+  tbl_regression(exponentiate = TRUE,
+                 pvalue_fun = function(x) style_pvalue(x, digits = 2),
+                 label = list(age_at_diagnosis ~ 'Age at diagnosis',
+                              R_status ~ 'R status',
+                              # TRG_status ~ 'TRG status',
+                              distance_anal_verge_final ~ 'Distance from anal verge',
+                              histological_grade_baseline ~ 'Baseline histological grade',
+                              cancer_stage_yp ~ 'Cancer staging post surgery',
+                              # cancer_stage_yp_RT~'Cancer staging post radiotherapy',
+                              time_interval_RT_surgery ~ 'Time between radiotherapy and surgery')) %>%
+  bold_p() %>%
+  add_n()
+
+
+coxph(as.formula(paste('Surv(time=rfs_time,event=rfs_status)~',paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+'))), 
+      data = match.data(propensity_matched_df)) %>%
+  tbl_regression(exponentiate = TRUE,
+                 pvalue_fun = function(x) style_pvalue(x, digits = 2),
+                 label = list(age_at_diagnosis ~ 'Age at diagnosis',
+                              R_status ~ 'R status',
+                              # TRG_status ~ 'TRG status',
+                              distance_anal_verge_final ~ 'Distance from anal verge',
+                              histological_grade_baseline ~ 'Baseline histological grade',
+                              cancer_stage_yp ~ 'Cancer staging post surgery',
+                              # cancer_stage_yp_RT~'Cancer staging post radiotherapy',
+                              time_interval_RT_surgery ~ 'Time between radiotherapy and surgery')) %>%
+  bold_p() %>%
+  add_n()
+
+
+coxphf::coxphf(as.formula(paste('Surv(time=os_time,event=os_status)~',paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+'))), 
+               data = match.data(propensity_matched_df), maxit=1000,maxstep=0.05)
+
+
+match.data(propensity_matched_df)[os_time<0]
+
+
 ```
 
