@@ -151,8 +151,6 @@ col_to_include <- c('patient_id','age_at_diagnosis','T_stage_baseline','N_stage_
 
 clinical_df <- df[!is.na(patient_id),..col_to_include]
 
-# Remove this patient R684833 because its rfs time is negative
-clinical_df <- clinical_df[patient_id != 'R684833']
 
 
 clinical_df[,`:=`(date_of_diagnosis=as.Date(date_of_diagnosis),

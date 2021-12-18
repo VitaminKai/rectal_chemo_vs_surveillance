@@ -1,6 +1,11 @@
 ---
 title: "Stage 3 rectal cancer adjuvant management: survival analysis"
-output: html_document
+output: 
+  html_document:
+    number_sections: true
+    toc: true
+    toc_depth: 2
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
@@ -12,22 +17,25 @@ library(MatchIt)
 source(here::here('code','initiation.R'))
 source(here('code','data_preparation.R'))
 
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
+>This project aims to 
 
-## Clinical summary table
 
-Compared to the adjuvant chemotherapy group, patients in the surveillence group tends to be older and present with better prognostic profile. 
+# Patient baseline profiles
+
+>Comparing the baseline profiles between adjuvant chemo versus surveillance group.
+Compared to the adjuvant chemotherapy group, patients in the surveillence group tends to be older and present with better prognostic profile. [Add in statistics from table] 
 
 ```{r,echo=FALSE,warning=FALSE}
-tbl_summary(data=clinical_multi_df[,!c('patient_id')],
+tbl_summary(data=clinical_multi_df[,!c('patient_id','os_time','os_status','rfs_time','rfs_status')],
             by='adjuvant_management',
             label = list(age_at_diagnosis ~ 'Age at diagnosis',
-                         os_time ~ 'Follow up time',
-                         os_status ~ 'Number of overall death',
-                         rfs_time ~ 'Recurrence free survival time',
-                         rfs_status ~ 'Number of disease recurrence',
+                         # os_time ~ 'Follow up time',
+                         # os_status ~ 'Number of overall death',
+                         # rfs_time ~ 'Recurrence free survival time',
+                         # rfs_status ~ 'Number of disease recurrence',
                          R_status ~ 'R status',
                          TRG_status ~ 'TRG status',
                          distance_anal_verge_final ~ 'Distance from anal verge',
@@ -39,9 +47,6 @@ tbl_summary(data=clinical_multi_df[,!c('patient_id')],
             theme_gtsummary_journal(journal='jama')) %>%
   add_n() %>% # add column with total number of non-missing observations
   add_p() %>% # test for a difference between groups
-  # modify_header(label = "**Variable**",
-  #               stat_1 = '**Adjuvant chemotherapy**',
-  #               stat_2 = '**Surveillence**') %>% # update the column header
   bold_labels() %>%
   bold_p()
 
@@ -49,57 +54,12 @@ tbl_summary(data=clinical_multi_df[,!c('patient_id')],
 
 ```
 
+***
+# Missing data pattern
 
-## KM Survival curve w.r.t overall survival
+>TRG status, EMVI and cancer stage post radiotherapy are observed to display more than 20% missingness. These co-variates are excluded from subsequent multivariate analysis.
 
-Plot KM curve with respect to adjuvant management option: adjuvant chemo vs surveillence
-```{r KM curve os,echo=FALSE,warning=FALSE}
-
-survminer::ggsurvplot(
-  fit = survfit(Surv(time=os_time,event=os_status) ~ adjuvant_management, data = clinical_df), 
-  xlab = "Years", 
-  ylab = "Overall survival probability",
-  # risk.table = T,
-  pval=T,
-  pval.method=T,
-  # cumevents = T,
-  break.time.by = 1,
-  surv.median.line = "v",  # add the median survival pointer.
-  legend.labs = c("Adjuvant chemotherapy", "Surveillence"),
-  pval.coord=c(0,0.55),
-  pval.method.coord=c(0,0.6),
-  palette = 'Dark2',
-  ylim = c(0.5, 1)
-)
-
-```
-
-## KM Survival curve w.r.t recurrence free survival
-
-Plot KM curve with respect to adjuvant management option: adjuvant chemo vs surveillence
-```{r KM curve rfs,echo=FALSE,warning=FALSE}
-
-survminer::ggsurvplot(
-  fit = survfit(Surv(time=rfs_time,event=rfs_status) ~ adjuvant_management, data = clinical_df), 
-  xlab = "Years", 
-  ylab = "Recurrence free survival probability",
-  # risk.table = T,
-  pval=T,
-  pval.method=T,
-  # cumevents = T,
-  break.time.by = 1,
-  surv.median.line = "hv",  # add the median survival pointer.
-  legend.labs = c("Adjuvant chemotherapy", "Surveillence"),
-  pval.coord=c(0,0.55),
-  pval.method.coord=c(0,0.6),
-  palette = 'Dark2',
-  ylim = c(0.5, 1)
-)
-
-```
-
-## Missing data pattern
-```{r missing data plot,echo=F}
+```{r missing data plot,echo=FALSE}
 
 na_pattern_df <- as.data.table(clinical_multi_df[,apply(.SD,2,function(x){return(is.na(x))}),.SDcols=!c('patient_id')])
 na_pattern_df[,patient_id:=clinical_multi_df[,patient_id]]
@@ -134,10 +94,142 @@ ggplot(data=na_pattern_plot_df)+
 
 ```
 
-## Recurrence free survival analysis
+***
+# Survival analysis {.tabset}
 
-```{r cox analysis for rfs,setup, include=FALSE}
-### Univariate cox model for rfs
+## KM curve and log-rank test
+> No significant difference in overall survival was detected between the KM curve of two groups using log-rank test (p=0.58)
+
+### Overall survival
+
+```{r KM curve os,echo=FALSE,warning=FALSE}
+
+survminer::ggsurvplot(
+  fit = survfit(Surv(time=os_time,event=os_status) ~ adjuvant_management, data = clinical_df), 
+  xlab = "Years", 
+  ylab = "Overall survival probability",
+  # risk.table = T,
+  pval=T,
+  pval.method=T,
+  # cumevents = T,
+  break.time.by = 1,
+  surv.median.line = "v",  # add the median survival pointer.
+  legend.labs = c("Adjuvant chemotherapy", "Surveillence"),
+  pval.coord=c(0,0.55),
+  pval.method.coord=c(0,0.6),
+  palette = 'Dark2',
+  ylim = c(0.5, 1)
+)
+```
+
+### Recurrence-free survival
+
+> There is a trend towards better recurrence free survival in the surveillance group using log-rank test however statistical significance was not reached (p=0.043). 
+
+```{r KM curve rfs,echo=FALSE,warning=FALSE}
+
+survminer::ggsurvplot(
+  fit = survfit(Surv(time=rfs_time,event=rfs_status) ~ adjuvant_management, data = clinical_df), 
+  xlab = "Years", 
+  ylab = "Recurrence free survival probability",
+  # risk.table = T,
+  pval=T,
+  pval.method=T,
+  # cumevents = T,
+  break.time.by = 1,
+  surv.median.line = "hv",  # add the median survival pointer.
+  legend.labs = c("Adjuvant chemotherapy", "Surveillence"),
+  pval.coord=c(0,0.55),
+  pval.method.coord=c(0,0.6),
+  palette = 'Dark2',
+  ylim = c(0.5, 1)
+)
+
+```
+
+## Univariate cox regression {.tabset}
+
+>Univariate cox regression was conducted to check each included variables influence on final survival outcome
+
+### Overall survival
+
+```{r cox analysis for os，setup,include=FALSE}
+
+# Univariate cox model for os 
+os_uni_surv_table <- tbl_uvregression(
+  data=clinical_multi_df[,!c('patient_id','rfs_status','rfs_time')],
+  method = coxph,
+  y = Surv(time=os_time, event=os_status),
+  label = list(age_at_diagnosis ~ 'Age at diagnosis',
+               R_status ~ 'R status',
+               TRG_status ~ 'TRG status',
+               distance_anal_verge_final ~ 'Distance from anal verge',
+               histological_grade_baseline ~ 'Baseline histological grade',
+               cancer_stage_yp ~ 'Cancer staging post surgery',
+               time_interval_RT_surgery ~ 'Time between radiotherapy and surgery',
+               cancer_stage_yp_RT~'Cancer staging post radiotherapy'),
+  exponentiate = TRUE,
+  pvalue_fun = function(x) style_pvalue(x, digits = 2)
+) %>%
+  bold_p()
+
+os_uni_surv_table_summary_stats <-
+  clinical_multi_df[!is.na('os_status')&!is.na('os_time'),!c('patient_id','os_status','os_time','rfs_status','rfs_time')] %>%
+  tbl_summary(missing = "no",
+              label = list(age_at_diagnosis ~ 'Age at diagnosis',
+                           R_status ~ 'R status',
+                           TRG_status ~ 'TRG status',
+                           distance_anal_verge_final ~ 'Distance from anal verge',
+                           histological_grade_baseline ~ 'Baseline histological grade',
+                           cancer_stage_yp ~ 'Cancer staging post surgery',
+                           time_interval_RT_surgery ~ 'Time between radiotherapy and surgery',
+                           cancer_stage_yp_RT~'Cancer staging post radiotherapy')) %>%
+  modify_header(stat_0 ~ "**Summary Statistics**")
+
+
+os_uni_surv_combined_table <-
+  tbl_merge(tbls = list(os_uni_surv_table_summary_stats,os_uni_surv_table)) %>%
+  modify_spanning_header(everything() ~ NA_character_)
+
+ # Multi cox analysis for OS
+
+# clinical_multi_complete_df <- na.omit(clinical_multi_df[,!c('TRG_status','EMVI')])
+# clinical_multi_complete_df[,cancer_stage_yp_RT:=fct_drop(cancer_stage_yp_RT)]
+clinical_multi_complete_df <- na.omit(clinical_multi_df[,!c('TRG_status','EMVI','cancer_stage_yp_RT')])
+
+
+os_multi_surv_table <-coxph(as.formula(paste('Surv(time=os_time,event=os_status)~',paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+'))), 
+                            data = clinical_multi_complete_df)%>%
+  tbl_regression(exponentiate = TRUE,
+                 pvalue_fun = function(x) style_pvalue(x, digits = 2),
+                 label = list(age_at_diagnosis ~ 'Age at diagnosis',
+                              R_status ~ 'R status',
+                              # TRG_status ~ 'TRG status',
+                              distance_anal_verge_final ~ 'Distance from anal verge',
+                              histological_grade_baseline ~ 'Baseline histological grade',
+                              cancer_stage_yp ~ 'Cancer staging post surgery',
+                              # cancer_stage_yp_RT~'Cancer staging post radiotherapy',
+                              time_interval_RT_surgery ~ 'Time between radiotherapy and surgery')) %>%
+  bold_p() %>%
+  add_n()
+
+os_uni_surv_table %>%
+  modify_caption('**Overall survival univariate**')
+# 
+# os_combined_table <-
+#   tbl_merge(tbls = list(os_uni_surv_combined_table,os_multi_surv_table),
+#             tab_spanner = c("**Univariate**", "**Multivariate**")) %>%
+#   modify_caption("**Overall survival**")
+# # 
+# # 
+# os_combined_table
+
+```
+
+### Recurrence free survival
+
+```{r cox analysis for rfs,setup}
+# Univariate cox model for rfs
 
 rfs_uni_surv_table <- tbl_uvregression(
   data=clinical_multi_df[,!c('patient_id','os_status','os_time')],
@@ -174,6 +266,8 @@ rfs_uni_surv_combined_table <-
   modify_spanning_header(everything() ~ NA_character_)
 
 
+# Multivariate cox analysis for RFS
+
 rfs_multi_surv_table <-coxph(as.formula(paste('Surv(time=rfs_time,event=rfs_status)~',paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+'))),
                              data = clinical_multi_df) %>%
   tbl_regression(exponentiate = TRUE,
@@ -191,6 +285,9 @@ rfs_multi_surv_table <-coxph(as.formula(paste('Surv(time=rfs_time,event=rfs_stat
   bold_p()
 
 
+rfs_uni_surv_table %>%
+  modify_caption('**Recurrence free survival univariate**')
+
 ### combine rfs models
 # rfs_combined_table <-
 #   tbl_merge(tbls = list(rfs_uni_surv_combined_table,rfs_multi_surv_table),
@@ -200,127 +297,40 @@ rfs_multi_surv_table <-coxph(as.formula(paste('Surv(time=rfs_time,event=rfs_stat
 # rfs_combined_table
 
 ```
-## Overall survival analysis
-
-```{r cox analysis for os，setup,include=FALSE}
-
-### Univariate cox model for os 
-os_uni_surv_table <- tbl_uvregression(
-  data=clinical_multi_df[,!c('patient_id','rfs_status','rfs_time')],
-  method = coxph,
-  y = Surv(time=os_time, event=os_status),
-  label = list(age_at_diagnosis ~ 'Age at diagnosis',
-               R_status ~ 'R status',
-               TRG_status ~ 'TRG status',
-               distance_anal_verge_final ~ 'Distance from anal verge',
-               histological_grade_baseline ~ 'Baseline histological grade',
-               cancer_stage_yp ~ 'Cancer staging post surgery',
-               time_interval_RT_surgery ~ 'Time between radiotherapy and surgery',
-               cancer_stage_yp_RT~'Cancer staging post radiotherapy'),
-  exponentiate = TRUE,
-  pvalue_fun = function(x) style_pvalue(x, digits = 2)
-) %>%
-  bold_p()
-
-os_uni_surv_table_summary_stats <-
-  clinical_multi_df[!is.na('os_status')&!is.na('os_time'),!c('patient_id','os_status','os_time','rfs_status','rfs_time')] %>%
-  tbl_summary(missing = "no",
-              label = list(age_at_diagnosis ~ 'Age at diagnosis',
-                           R_status ~ 'R status',
-                           TRG_status ~ 'TRG status',
-                           distance_anal_verge_final ~ 'Distance from anal verge',
-                           histological_grade_baseline ~ 'Baseline histological grade',
-                           cancer_stage_yp ~ 'Cancer staging post surgery',
-                           time_interval_RT_surgery ~ 'Time between radiotherapy and surgery',
-                           cancer_stage_yp_RT~'Cancer staging post radiotherapy')) %>%
-  modify_header(stat_0 ~ "**Summary Statistics**")
 
 
-os_uni_surv_combined_table <-
-  tbl_merge(tbls = list(os_uni_surv_table_summary_stats,os_uni_surv_table)) %>%
-  modify_spanning_header(everything() ~ NA_character_)
+## Firth penalised multivariate cox regression
 
-### Multi cox analysis for OS
+>Next we aimed to compare the OS and RFS between adjuvant chemo and surveillance group using multivariate logistical regression accounting for known clinical prognostic factors. Firth penalised cox regression was used as some variables contained groups with relatively small number of samples.A maximum iteration of 500 and maximum step per iteration of 0.5 was used. 
 
-# clinical_multi_complete_df <- na.omit(clinical_multi_df[,!c('TRG_status','EMVI')])
-# clinical_multi_complete_df[,cancer_stage_yp_RT:=fct_drop(cancer_stage_yp_RT)]
-clinical_multi_complete_df <- na.omit(clinical_multi_df[,!c('TRG_status','EMVI','cancer_stage_yp_RT')])
-
-
-
-os_multi_surv_table <-coxph(as.formula(paste('Surv(time=os_time,event=os_status)~',paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+'))), 
-                            data = clinical_multi_complete_df)%>%
-  tbl_regression(exponentiate = TRUE,
-                 pvalue_fun = function(x) style_pvalue(x, digits = 2),
-                 label = list(age_at_diagnosis ~ 'Age at diagnosis',
-                              R_status ~ 'R status',
-                              # TRG_status ~ 'TRG status',
-                              distance_anal_verge_final ~ 'Distance from anal verge',
-                              histological_grade_baseline ~ 'Baseline histological grade',
-                              cancer_stage_yp ~ 'Cancer staging post surgery',
-                              # cancer_stage_yp_RT~'Cancer staging post radiotherapy',
-                              time_interval_RT_surgery ~ 'Time between radiotherapy and surgery')) %>%
-  bold_p() %>%
-  add_n()
-
-# 
-# os_combined_table <-
-#   tbl_merge(tbls = list(os_uni_surv_combined_table,os_multi_surv_table),
-#             tab_spanner = c("**Univariate**", "**Multivariate**")) %>%
-#   modify_caption("**Overall survival**")
-# # 
-# # 
-# os_combined_table
-
-```
-
-
-## Firth penalised cox regression for OS and RFS
 ```{r, Firth penalised regression}
+
+### Normal cox regression without firth penalisation
+
+# multi_combined_table <- 
+#   tbl_merge(tbls = list(os_multi_surv_table,rfs_multi_surv_table),
+#             tab_spanner = c("**Overall survival**", "**Recurrence free survival**")) %>%
+#   modify_caption("**Multi-variate**")
+# 
+# multi_combined_table
 
 clinical_multi_complete_df <- na.omit(clinical_multi_df[,!c('TRG_status','EMVI','cancer_stage_yp_RT')])
 # clinical_multi_complete_df[,cancer_stage_yp_RT:=fct_drop(cancer_stage_yp_RT)]
 
 os_multi_surv_table <-coxphf::coxphf(as.formula(paste('Surv(time=os_time,event=os_status)~',paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+'))), 
-                                     data = clinical_multi_complete_df, maxit=1000,maxstep=0.05)
+                                     data = clinical_multi_complete_df, maxit=500,maxstep=0.05)
 
 
 
 rfs_multi_surv_table <- coxphf::coxphf(as.formula(paste('Surv(time=rfs_time,event=rfs_status)~',paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+'))),
-                                       data = clinical_multi_complete_df,maxit=500)
-
+                                       data = clinical_multi_complete_df,maxit=500,maxstep=0.05)
 
 
 ```
 
 
-## Univariate and multivariate cox analysis
 
-```{r combined cox analysis}
-# uni_combined_table <-
-#   tbl_merge(tbls = list(os_uni_surv_table,rfs_uni_surv_table),
-#             tab_spanner = c("**Overall survival**", "**Recurrence free survival**")) %>%
-#   modify_caption("**Univariate**")
-# 
-# uni_combined_table
-
-os_uni_surv_table %>%
-  modify_caption('**Overall survival univariate**')
-
-rfs_uni_surv_table %>%
-  modify_caption('**Recurrence free survival univariate**')
-
-multi_combined_table <- 
-  tbl_merge(tbls = list(os_multi_surv_table,rfs_multi_surv_table),
-            tab_spanner = c("**Overall survival**", "**Recurrence free survival**")) %>%
-  modify_caption("**Multi-variate**")
-
-multi_combined_table
-```
-
-# Propensity score matching
-
-```{r propensity score matching}
+```{r propensity score matching, include=FALSE, eval=FALSE}
 
 # 
 
@@ -328,12 +338,12 @@ propensity_df <- copy(clinical_multi_complete_df)
 propensity_df <- propensity_df[,adjuvant_management:=ifelse(adjuvant_management=='surveillence',0,1)]
 # propensity_df <- na.omit(clinical_multi_df[,adjuvant_management:=ifelse(adjuvant_management=='surveillence',0,1)])
 
-propensity_matched_df <- matchit(formula = adjuvant_management ~ age_at_diagnosis+CRM+R_status+distance_anal_verge_final+time_interval_RT_surgery+histological_grade_baseline+cancer_stage_yp,
+propensity_matched_df <- matchit(formula = adjuvant_management ~ age_at_diagnosis+CRM+R_status+cancer_stage_yp,
                                  data=propensity_df,
-                                 method ='optimal',distance='glm',link='logit')
+                                 method ='subclass',distance='glm',link='logit')
 
 summary(propensity_matched_df)
-plot(summary(propensity_matched_df))
+plot(summary(propensity_matched_df),interactions=FALSE,threshold = c(.1, .1))
 
 
 
