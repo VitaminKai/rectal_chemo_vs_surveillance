@@ -124,7 +124,7 @@ survminer::ggsurvplot(
 
 ### Recurrence-free survival
 
-> There is a trend towards better recurrence free survival in the surveillance group using log-rank test however statistical significance was not reached (p=0.043). 
+> There is a trend towards better recurrence free survival in the surveillance group using log-rank test however statistical significance was not reached (p=0.043 used to be not significant, awaiting confirmation on some seemingly wrong entries on raw excel). 
 
 ```{r KM curve rfs,echo=FALSE,warning=FALSE}
 
@@ -314,12 +314,12 @@ rfs_uni_surv_table %>%
 # 
 # multi_combined_table
 
+# Firth reg requires input dataframe with no missing data
 clinical_multi_complete_df <- na.omit(clinical_multi_df[,!c('TRG_status','EMVI','cancer_stage_yp_RT')])
-# clinical_multi_complete_df[,cancer_stage_yp_RT:=fct_drop(cancer_stage_yp_RT)]
+
 
 os_multi_surv_table <-coxphf::coxphf(as.formula(paste('Surv(time=os_time,event=os_status)~',paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+'))), 
                                      data = clinical_multi_complete_df, maxit=500,maxstep=0.05)
-
 
 
 rfs_multi_surv_table <- coxphf::coxphf(as.formula(paste('Surv(time=rfs_time,event=rfs_status)~',paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+'))),
@@ -332,7 +332,6 @@ rfs_multi_surv_table <- coxphf::coxphf(as.formula(paste('Surv(time=rfs_time,even
 
 ```{r propensity score matching, include=FALSE, eval=FALSE}
 
-# 
 
 propensity_df <- copy(clinical_multi_complete_df)
 propensity_df <- propensity_df[,adjuvant_management:=ifelse(adjuvant_management=='surveillence',0,1)]
