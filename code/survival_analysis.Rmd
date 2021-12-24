@@ -1,11 +1,15 @@
 ---
 title: "Stage 3 rectal cancer adjuvant management: survival analysis"
 output: 
-  html_document:
+  word_document:
     number_sections: true
     toc: true
-    toc_depth: 2
-    toc_float: true
+
+knit: (function(inputFile, encoding) { 
+      rmarkdown::render(inputFile,
+                        encoding=encoding, 
+                        output_dir = here::here('output'),
+                        output_file='rectal_analysis.docx') })
 ---
 
 ```{r setup, include=FALSE}
@@ -228,7 +232,7 @@ os_uni_surv_table %>%
 
 ### Recurrence free survival
 
-```{r cox analysis for rfs,setup}
+```{r cox analysis for rfs,setup,include=FALSE}
 # Univariate cox model for rfs
 
 rfs_uni_surv_table <- tbl_uvregression(
@@ -325,6 +329,7 @@ os_multi_surv_table <-coxphf::coxphf(as.formula(paste('Surv(time=os_time,event=o
 rfs_multi_surv_table <- coxphf::coxphf(as.formula(paste('Surv(time=rfs_time,event=rfs_status)~',paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+'))),
                                        data = clinical_multi_complete_df,maxit=500,maxstep=0.05)
 
+rfs_multi_surv_table
 
 ```
 
