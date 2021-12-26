@@ -324,10 +324,54 @@ os_multi_surv_table <-coxphf::coxphf(as.formula(paste('Surv(time=os_time,event=o
 
 rfs_multi_surv_table <- coxphf::coxphf(as.formula(paste('Surv(time=rfs_time,event=rfs_status)~',paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+'))),
                                        data = clinical_multi_complete_df,maxit=500,maxstep=0.05)
-
-
 ```
 
+```{r}
+var_names <- paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+')
+
+
+var_names <- var_names %>% str_replace("cancer_stage_yp", "frailty(cancer_stage_yp)")
+
+for (i in 21:31) {
+  print(i)
+  clinical_multi_complete_df_2 <- slice(clinical_multi_complete_df, i:120)
+  os_multi_surv_table <- coxph(as.formula(paste('Surv(time=os_time,event=os_status)~',var_names)), 
+                                     data = clinical_multi_complete_df_2)
+}
+
+clinical_multi_complete_df %>% slice(27:29)
+
+clinical_multi_complete_df_2 <- slice(clinical_multi_complete_df, c(1:27, 29:120))
+
+os_multi_surv_table <- coxph(as.formula(paste('Surv(time=os_time,event=os_status)~',var_names)), 
+                                     data = clinical_multi_complete_df_2)
+library(PCA)
+
+
+
+pca_result <- clinical_multi_complete_df %>% select(-1) %>% 
+  mutate(across(everything(), as.factor)) %>% 
+  mutate(across(everything(), as.numeric)) %>% 
+  prcomp()
+
+
+plot(pca_result$x[,1], pca_result$x[,2])
+
+os_multi_surv_table %>% 
+  tbl_regression()
+
+
+
+
+os_multi_surv_table <- coxph(as.formula(paste('Surv(time=os_time,event=os_status)~',var_names)), 
+                                     data = clinical_multi_complete_df)
+
+
+
+# is it data's problem or test's problem: 
+# can we use a subset of data 
+
+```
 
 
 ```{r propensity score matching, include=FALSE, eval=FALSE}
@@ -408,6 +452,50 @@ coxphf::coxphf(as.formula(paste('Surv(time=os_time,event=os_status)~',paste(name
 
 
 match.data(propensity_matched_df)[os_time<0]
+
+
+```
+
+```{r}
+library(coxphf)
+data(breast)
+fit.breast<-coxphf(data=breast, Surv(TIME,CENS)~T+N+G+CD)
+
+fit.breast<-coxph(data=breast, Surv(TIME,CENS)~T+ridge(N+G+CD, theta = 1))
+
+fit.breast %>% tbl_regression()
+
+fit.breast %>% broom::glance()
+
+class(fit.breast)
+
+library(broom)
+
+fit.breast %>% tidy()
+
+tidy.coxphf <- function(x) {
+  x$p %>% 
+  tibble::as_tibble(rownames="term")
+}
+
+fit.breast %>% tbl_regression()
+
+stats::coef(fit.breast)
+
+
+
+broom::augment()
+
+summary(fit.breast)
+
+testdata <- data.frame(list(start=c(1, 2, 5, 2, 1, 7, 3, 4, 8, 8),
+stop =c(2, 3, 6, 7, 8, 9, 9, 9,14,17),
+event=c(1, 1, 1, 1, 1, 1, 1, 0, 0, 0),
+x1 =c(1, 0, 0, 1, 0, 1, 1, 1, 0, 0),
+x2 =c(0, 1, 1, 1, 0, 0, 1, 0, 1, 0),
+x3 =c(1, 0, 1, 0, 1, 0, 1, 0, 1, 0)))
+
+coxphftest(formula=Surv(start, stop, event) ~ x1+x2+x3, test=~x1+x2, data=testdata)
 
 
 ```
