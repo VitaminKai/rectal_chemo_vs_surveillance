@@ -303,9 +303,9 @@ rfs_uni_surv_table %>%
 ```
 
 
-## Firth penalised multivariate cox regression
+## multivariate cox regression
 
->Next we aimed to compare the OS and RFS between adjuvant chemo and surveillance group using multivariate logistical regression accounting for known clinical prognostic factors. Firth penalised cox regression was used as some variables contained groups with relatively small number of samples.A maximum iteration of 500 and maximum step per iteration of 0.5 was used. 
+>Next we aimed to compare the OS and RFS between adjuvant chemo and surveillance group using multivariate logistical regression accounting for known clinical prognostic factors. Variables contained groups with very small number of samples (<4) were removed. 
 
 ```{r, Firth penalised regression}
 
@@ -324,13 +324,13 @@ clinical_multi_complete_df <- na.omit(clinical_multi_df[,!c('TRG_status','EMVI',
 # os_multi_surv_table <-coxphf::coxphf(as.formula(paste('Surv(time=os_time,event=os_status)~',paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+'))),
 #                                      data = clinical_multi_complete_df, maxit=500,maxstep=0.05)
 
-clinical_multi_complete_df_2 <- slice(clinical_multi_complete_df, c(1:27, 29:120))
+clinical_multi_complete_df_2 <- slice(clinical_multi_complete_df, c(1:27, 29:120)) %>% 
+  filter(R_status != "R2")
 
 var_names <- paste(names(clinical_multi_df[,!c('patient_id','rfs_status','rfs_time','os_time','os_status','TRG_status','EMVI','cancer_stage_yp_RT')]),collapse='+')
 
 os_multi_surv_table <- coxph(as.formula(paste('Surv(time=os_time,event=os_status)~',var_names)), 
                                                                   data = clinical_multi_complete_df_2)
-
 
 os_multi_surv_table %>% 
   tbl_regression()
@@ -348,14 +348,8 @@ os_multi_surv_table %>%
 #   aes(x, y) +
 #   geom_point()
 
-
-
-
-clinical_multi_complete_df_3 <- clinical_multi_complete_df_2 %>% 
-  filter(R_status != "R2")
-
 rfs_multi_surv_table <- coxph(as.formula(paste('Surv(time=rfs_time,event=rfs_status)~',var_names)),
-                                       data = clinical_multi_complete_df_3)
+                                       data = clinical_multi_complete_df_2)
 
 rfs_multi_surv_table %>% tbl_regression()
 ```
