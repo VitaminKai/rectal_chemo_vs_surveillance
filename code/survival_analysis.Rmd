@@ -333,7 +333,18 @@ os_multi_surv_table <- coxph(as.formula(paste('Surv(time=os_time,event=os_status
                                                                   data = clinical_multi_complete_df_2)
 
 os_multi_surv_table %>% 
-  tbl_regression()
+    tbl_regression(exponentiate = TRUE,
+                 pvalue_fun = function(x) style_pvalue(x, digits = 2),
+                 label = list(age_at_diagnosis ~ 'Age at diagnosis',
+                              R_status ~ 'R status',
+                              # TRG_status ~ 'TRG status',
+                              distance_anal_verge_final ~ 'Distance from anal verge',
+                              histological_grade_baseline ~ 'Baseline histological grade',
+                              cancer_stage_yp ~ 'Cancer staging post surgery',
+                              # cancer_stage_yp_RT~'Cancer staging post radiotherapy',
+                              time_interval_RT_surgery ~ 'Time between radiotherapy and surgery')) %>%
+  bold_p() %>%
+  add_n()
 # 
 # table_umap <- clinical_multi_complete_df_2 %>% 
 #   mutate(across(everything(), as.factor)) %>% 
@@ -351,7 +362,19 @@ os_multi_surv_table %>%
 rfs_multi_surv_table <- coxph(as.formula(paste('Surv(time=rfs_time,event=rfs_status)~',var_names)),
                                        data = clinical_multi_complete_df_2)
 
-rfs_multi_surv_table %>% tbl_regression()
+rfs_multi_surv_table %>% tbl_regression(exponentiate = TRUE,
+                 pvalue_fun = function(x) style_pvalue(x, digits = 2),
+                 label = list(age_at_diagnosis ~ 'Age at diagnosis',
+                              R_status ~ 'R status',
+                              # TRG_status ~ 'TRG status',
+                              distance_anal_verge_final ~ 'Distance from anal verge',
+                              histological_grade_baseline ~ 'Baseline histological grade',
+                              cancer_stage_yp~ 'Cancer staging post surgery',
+                              # cancer_stage_yp_RT~'Cancer staging post radiotherapy',
+                              time_interval_RT_surgery ~ 'Time between radiotherapy and surgery'
+                 )) %>%
+  add_n() %>%
+  bold_p()
 ```
 
 
