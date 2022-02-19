@@ -331,8 +331,7 @@ clinical_df <- clinical_df %>%
 
 clinical_df[,cancer_stage_yp:= fct_relevel(cancer_stage_yp,'stage_3')] 
 
-
-# format CRM
+# Format distance from anal verge
 clinical_df <- clinical_df %>% 
   mutate(distance_anal_verge_unit_tmp = 
            str_extract(distance_anal_verge, "[a-z].*"),
@@ -344,6 +343,13 @@ clinical_df <- clinical_df %>%
   ) %>%
   select(-c(distance_anal_verge_unit_tmp, distance_anal_verge))
 
+clinical_df[!(is.na(distance_anal_verge_final)),
+            distance_anal_verge_category:=ifelse(distance_anal_verge_final<5,'<5cm',ifelse(
+              distance_anal_verge_final>=5 &distance_anal_verge_final<=10,'5-10cm',ifelse(
+                distance_anal_verge_final>10 &distance_anal_verge_final<=15,'10-15cm','>15cm')))]
+
+
+# format CRM
 clinical_df <- clinical_df %>% 
   mutate(
     CRM = if_else(
@@ -353,16 +359,28 @@ clinical_df <- clinical_df %>%
 
 clinical_df[,CRM:= fct_relevel(CRM,'pos')] 
 
+#=============================Exclude patient groups with small numbers ===============================#
 
-# 
-# clinical_df_multi <- clinical_df %>% 
-#   select(-c(ends_with("stage_baseline"), ends_with("stage"), adjuvant_chemo_regimen)) %>% 
-#   relocate(os_time, os_status, adjuvant_management, .before = everything())
+# Exclude R2, with only 2 patients out of 181
+clinical_df <- clinical_df[!(patient_id %in% c('R681653','R662302-'))]
 
+# Exclude histological graade 1, with only 1 patients out of 181
+clinical_df <- clinical_df[patient_id != 'R614383']
+
+# Exclude cancer stage grade 0 and 4 after RT, with only 1 patients (stage 4) and 4 (stage 0) out of 181
+clinical_df <- clinical_df[!(cancer_stage_yp_RT %in% c('stage_0','stage_4'))]
+clinical_df <- clinical_df[,cancer_stage_yp_RT:= fct_drop(cancer_stage_yp_RT)]
+
+# Drop unused factor levels for histological grade and R status
+clinical_df[,histological_grade_baseline:=fct_drop(histological_grade_baseline)]
+clinical_df[,R_status:=fct_drop(R_status)]
+
+#============================================================#
 multi_var <- c('patient_id','os_time','os_status','rfs_time','rfs_status','age_at_diagnosis',
-               'CRM',"R_status",'TRG_status','distance_anal_verge_final','EMVI',
-               'adjuvant_management','time_interval_RT_surgery',
-               'histological_grade_baseline','cancer_stage_yp','cancer_stage_yp_RT')
+               'CRM',"R_status",'TRG_status','distance_anal_verge_final',
+               'distance_anal_verge_category','EMVI','adjuvant_management',
+               'time_interval_RT_surgery','histological_grade_baseline',
+               'cancer_stage_yp','cancer_stage_yp_RT')
 
 clinical_multi_df <- clinical_df[,..multi_var]
 # # 

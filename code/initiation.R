@@ -26,3 +26,7 @@ rid_of_quotation <- function(x,width=12){
   out<-gsub(pattern='`',replacement='',x=x)
   return(out)
 }
+
+adt <- function(x){
+  return(as.data.table(x,keep.rownames=TRUE))
+}
